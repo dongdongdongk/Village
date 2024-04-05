@@ -1,37 +1,47 @@
+const {
+  StupidVillageAI,
+  AdvancedVillageAI,
+  TestVillageAI,
+} = require("./VillageAI");
+
 class Village {
   constructor() {
-    this.name = this.generateName(); // 마을 이름 생성
-    this.territorySize = this.generateTerritorySize(); // 영토 크기
-    this.happiness = 50; // 행복도
-    this.year = 0; // 현재 년도 초기화
-    this.civilizationLevel = 0; // 문명 발전도 초기화 (처음에는 0으로 시작하여 원시 시대)
-    this.foodSupply = 200;
-    this.population = 100; // 초기 인구는 100명으로 설정
-    this.birthRate = 0.03; //0.03 출산율: 연간 각 여성당 평균 출생하는 아이의 수
-    this.deathRate = 0.01; // 사망률: 연간 전체 인구 중 사망하는 비율
+    this.name = this.generateName();
+    this.territorySize = this.generateTerritorySize();
+    this.happiness = 100;
+    this.year = 0;
+    this.civilizationLevel = 0;
+    this.foodSupply = 2000;
+    this.population = 100;
+    this.lastYearPopulation = this.population;
+    this.birthRate = 0.03;
+    this.deathRate = 0.01;
 
-    // 직업별 인구 수 설정
     this.scientistCount = 0;
-    this.farmerCount = 0;
+    this.farmerCount = 200;
     this.soldierCount = 0;
     this.priestCount = 0;
 
-    // 정치 체제 랜덤 선택
     this.politicalSystem = this.getRandomPoliticalSystem();
 
-    // 직업 분배
-    this.distributeJobs();
-
-    // 초기 과학 수준
     this.scienceLevel = 0;
 
-    // 주기적으로 인구 및 직업 분배 업데이트
+    // 랜덤하게 AI 선택
+    const aiClasses = [StupidVillageAI, TestVillageAI];
+    const randomAI = aiClasses[Math.floor(Math.random() * aiClasses.length)];
+    // 선택된 AI 클래스 이름 출력
+    // console.log('│─────────────────────────────────────│');
+    // console.log(`│ 현재 사용 중인 AI: ${randomAI.name}`);
+    // console.log('│─────────────────────────────────────│');
+
+    this.VillageAI = new randomAI(this); // 랜덤하게 선택된 VillageAI 인스턴스 생성 및 Village 인스턴스 전달
+
     setInterval(() => {
+      this.VillageAI.manageJobProduction(); // VillageAI의 메서드 호출
       this.updatePopulation();
-    }, 1000);
+    }, 500);
   }
 
-  // 마을 이름 생성 메서드
   generateName() {
     const names = [
       "서울",
@@ -48,12 +58,10 @@ class Village {
     return names[Math.floor(Math.random() * names.length)];
   }
 
-  // 영토 크기 생성 메서드
   generateTerritorySize() {
     return Math.floor(Math.random() * (100 - 50 + 1)) + 50;
   }
 
-  // 랜덤 정치 체제 선택 메서드
   getRandomPoliticalSystem() {
     const politicalSystems = [
       "군사주의",
@@ -67,7 +75,6 @@ class Village {
     ];
   }
 
-  // 문명 시대 출력 메서드
   getCivilizationEra() {
     const civilizationLevels = [
       { level: 0, era: "원시" },
@@ -84,80 +91,148 @@ class Village {
     }
   }
 
-  // 랜덤한 비율 변경을 생성하는 메서드
-getRandomRateChange(min, max) {
-  return Math.random() * (max - min) + min;
-}
-
-  // 랜덤한 생산량을 생성하는 메서드
   getRandomProduction(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
   updatePopulation() {
+    this.population =
+      this.scientistCount +
+      this.farmerCount +
+      this.soldierCount +
+      this.priestCount;
+    const era = this.getCivilizationEra();
+    // 박스 시작
+    console.log(` ${this.year}년도`);
+    console.log("───────────────────────────────────────");
+    console.log(`│ 마을 이름: ${this.name}`);
+    console.log("│─────────────────────────────────────│");
+    console.log(`│ 직업별 인구 수 `);
+    console.log("│─────────────────────────────────────│");
+    console.log(
+      `│ 과학자: ${this.scientistCount}, 농부: ${this.farmerCount}, 군인: ${this.soldierCount}, 사제: ${this.priestCount}`
+    );
+    console.log("│─────────────────────────────────────│");
+    console.log(`│ 영토 크기: ${this.territorySize}`);
+    console.log("│─────────────────────────────────────│");
+    console.log(`│ 현재 인구: ${this.population}명`);
+    console.log("│─────────────────────────────────────│");
+    console.log(`│ 식량 : ${this.foodSupply}`);
+    console.log("│─────────────────────────────────────│");
+    console.log(`│ 행복도: ${this.happiness}%`);
+    console.log("│─────────────────────────────────────│");
+    console.log(`│ 문명 시대: ${era}`);
+    console.log("│─────────────────────────────────────│");
+    console.log(`│ 정치 체제: ${this.politicalSystem}`);
+    console.log("│─────────────────────────────────────│");
+    console.log("│─────────────────────────────────────│");
+    console.log(`│ 현재 사용 중인 AI: ${this.VillageAI.constructor.name}`);
+    console.log("│─────────────────────────────────────│");
+    // 박스 끝
 
-    // 출산율과 사망률에 랜덤성 추가
-    this.birthRate += this.getRandomRateChange(-0.001, 0.002);
-    this.deathRate += this.getRandomRateChange(-0.001, 0.001);
+    // this.printJobCounts();
 
-    this.happiness -= 0.1;
-    this.birth();
-    this.death();
-    const foodConsumption = this.population; // 인구 수만큼의 식량 소비량 계산
-
-    let maxFoodProduction = this.territorySize * 100;
-    const foodProductionPerFarmer = this.getRandomProduction(1, 4) // 농부 한 명이 만들어내는 평균 식량 생산량
-    let foodProduction = Math.round(this.farmerCount * foodProductionPerFarmer); // 농부들이 만들어낸 식량 생산량 계산
-
-    // 생산량 한계
-    if (foodProduction > maxFoodProduction) {
-      foodProduction = maxFoodProduction;
+    const maxPopulation = this.territorySize * 1000; // 최대 수용 인구 계산
+    const populationExcess = this.population - maxPopulation; // 초과 인구 계산
+    
+    if (populationExcess > 0) {
+      // 초과 인구만큼 행복도 감소
+      const excessHappinessDecrease = populationExcess * 0.01; // 초과 인구 1000 당 1%씩 감소
+      this.happiness -= excessHappinessDecrease;
+    
+      // 행복도가 0 이하로 내려가면 식량 생산량의 3분에 1이 감소
+      if (this.happiness <= 0) {
+        const foodProductionDecrease = Math.floor(this.foodProduction * (1 / 3));
+        this.foodProduction -= foodProductionDecrease;
+        console.log(`식량 생산량이 ${foodProductionDecrease} 감소했습니다.`);
+      }
+    } else {
+      // 초과 인구가 없으면 기존 행복도 감소 로직 유지
+      this.happiness -= 0.1;
     }
+    // 사제가 매턴마다 0.1만큼 행복을 추가
+    this.happiness += 0.01 * this.priestCount;
+    
+    // 행복도가 100을 넘지 못하게 조정
+    this.happiness = Math.min(this.happiness, 100);
 
-    // 식량 생산
+
+    const foodConsumption = this.lastYearPopulation;
+
+    const maxFoodProduction = this.territorySize * 100;
+    const foodProductionPerFarmer = this.getRandomProduction(5, 7);
+    const foodProduction = Math.round(
+      this.farmerCount * foodProductionPerFarmer
+    );
+
     this.foodSupply += foodProduction - foodConsumption;
-    console.log(foodProduction, " 의 식량을 생산했습니다.");
 
-    // 식량 부족으로 인한 사망 확인 및 처리
-    if (this.foodSupply < 0) {
-      const populationDecrease = Math.abs(this.foodSupply); // 부족한 식량의 절대값을 인구 감소로 설정
-      this.population -= populationDecrease; // 인구를 감소시킴
+    // 박스 시작
+    console.log("│─────────────────────────────────────│");
+    console.log("│ 식량 생산 및 소비 보고   ");
+    console.log("│─────────────────────────────────────│");
+    console.log(`│ 작년 ${foodProduction} 의 식량을 생산했습니다.`);
+    console.log(`│ 작년 ${foodConsumption} 의 식량을 소비했습니다.`);
+    console.log("│─────────────────────────────────────│");
+    // 박스 끝
+
+    if (this.foodSupply < foodConsumption) {
+      const foodShortage = foodConsumption - this.foodSupply;
+      // 박스 시작
+      console.log("│─────────────────────────────────────│");
+      console.log("│ 식량 부족 보고          │");
+      console.log("│─────────────────────────────────────│");
       console.log(
-        `${populationDecrease} 명이 식량 부족으로 인해 사망하였습니다.`
+        `│ 작년 ${foodShortage} 명의 인구가 식량 부족으로 인해 사망하였습니다.`
       );
-      this.foodSupply = 0; // 음수 식량 공급량을 0으로 설정
+      console.log("│─────────────────────────────────────│");
+      // 박스 끝
+      this.foodSupply = 0;
+
+      const deathCount = Math.min(this.population, foodShortage);
+      this.distributeDeaths(deathCount);
+
+      if (this.population <= 0) {
+        console.log(`${this.name} 마을이 멸망하였습니다.`);
+        clearInterval(this.intervalId);
+        process.exit();
+      }
     }
 
     this.scienceLevel += this.scientistCount * 10;
     this.civilizationLevel += Math.floor(this.population * 0.1);
 
-    this.distributeJobs();
-
-    const era = this.getCivilizationEra();
-    console.log(
-      `${this.year}년도 - 마을 이름: ${this.name}, 영토 크기: ${this.territorySize}, 현재 인구: ${this.population}명, 식량 : ${this.foodSupply} 행복도: ${this.happiness}%, 문명 시대: ${era}, 정치 체제: ${this.politicalSystem}`
-    );
-
-    this.printJobCounts();
-
-    if (era === "원시") {
-      console.log(`
-                    |   _   _
-              . | . x .|.|-|.|
-           |\ ./.\-/.\-|.|.|.|
-        ~~~|.|_|.|_|.|.|.|_|.|~~~
-              `);
-    }
-
-    // 인구가 0이 되면 마을 멸망 출력
-    if (this.population === 0) {
-      console.log(`${this.name} 마을이 멸망하였습니다.`);
-    }
+    this.lastYearPopulation = this.population;
 
     this.year++;
+    if (era === "원시") {
+      console.log(`
+                      |   _   _
+                . | . x .|.|-|.|
+             |\ ./.\-/.\-|.|.|.|
+          ~~~|.|_|.|_|.|.|.|_|.|~~~
+                `);
+    }
+
+    if (era === "고대") {
+      console.log(`
+                      |   _   _
+                . | . x .|.|-|.|
+             |\ ./.\-/.\-|.|.|.|
+          ~~~|.|_|.|_|.|.|.|_|.|~~~
+                `);
+    }
+
+    console.log(" ");
+    console.log(" ");
+    console.log(" ");
+    console.log(" ");
+    console.log(" ");
+    console.log(" ");
+    console.log(" ");
+    console.log(" ");
   }
 
-  // 직업별 인구 수 출력 메서드
   printJobCounts() {
     console.log("직업별 인구 수:");
     console.log(`과학자: ${this.scientistCount}`);
@@ -165,72 +240,93 @@ getRandomRateChange(min, max) {
     console.log(`군인: ${this.soldierCount}`);
     console.log(`종교인: ${this.priestCount}`);
   }
+  distributeDeaths(deathCount) {
+    const jobs = [
+      this.scientistCount,
+      this.farmerCount,
+      this.soldierCount,
+      this.priestCount,
+    ];
+    const totalPopulation = this.population;
 
-  // 출생 처리 메서드
-  birth() {
-    const births = Math.floor(this.population * this.birthRate); // 출생 수 계산
-    this.population += births; // 인구 증가
-    console.log(births, " 명이 태어났습니다.");
+    for (let i = 0; i < jobs.length; i++) {
+      if (deathCount <= 0) break; // 사망자가 더 이상 없으면 종료
 
-    // 새로운 출생으로 인한 직업 분배
-    this.distributeJobs();
-  }
+      const ratio = jobs[i] / totalPopulation;
+      const deaths = Math.ceil(deathCount * ratio);
 
-  // 사망 처리 메서드
-  death() {
-    const deaths = Math.floor(this.population * this.deathRate); // 사망 수 계산
-    this.population -= deaths; // 인구 감소
-    console.log(deaths, " 명이 사망하였습니다");
-  }
+      switch (i) {
+        case 0:
+          this.scientistCount -= deaths;
+          break;
+        case 1:
+          this.farmerCount -= deaths;
+          break;
+        case 2:
+          this.soldierCount -= deaths;
+          break;
+        case 3:
+          this.priestCount -= deaths;
+          break;
+      }
 
-  // 직업 분배 메서드
-  distributeJobs() {
-    // 각 직업에 대한 비율 설정
-    let scientistRatio, farmerRatio, soldierRatio, priestRatio;
-    switch (this.politicalSystem) {
-      case "군사주의":
-        scientistRatio = 0.1;
-        farmerRatio = 0.2;
-        soldierRatio = 0.5;
-        priestRatio = 0.2;
-        break;
-      case "과학주의":
-        scientistRatio = 0.4;
-        farmerRatio = 0.2;
-        soldierRatio = 0.1;
-        priestRatio = 0.3;
-        break;
-      case "농경주의":
-        scientistRatio = 0.2;
-        farmerRatio = 0.5;
-        soldierRatio = 0.1;
-        priestRatio = 0.2;
-        break;
-      case "종교주의":
-        scientistRatio = 0.1;
-        farmerRatio = 0.2;
-        soldierRatio = 0.1;
-        priestRatio = 0.6;
-        break;
-      case "민주주의":
-        scientistRatio = 0.25;
-        farmerRatio = 0.25;
-        soldierRatio = 0.25;
-        priestRatio = 0.25;
-        break;
-      default:
-        scientistRatio = 0.2;
-        farmerRatio = 0.4;
-        soldierRatio = 0.3;
-        priestRatio = 0.1;
-        break;
+      deathCount -= deaths;
     }
 
-    // 직업별 인구 수 계산 및 설정
-    this.scientistCount = Math.floor(this.population * scientistRatio);
-    this.farmerCount = Math.floor(this.population * farmerRatio);
-    this.soldierCount = Math.floor(this.population * soldierRatio);
-    this.priestCount = Math.floor(this.population * priestRatio);
+    if (this.population <= 0) {
+      // 박스 시작
+      console.log("|+++++++++++++++++++++++++++++++++++++│");
+      console.log("│─────────────────────────────────────│");
+      console.log(`│ ${this.name} 마을이 식량 부족으로 멸망하였습니다.    `);
+      console.log("│─────────────────────────────────────│");
+      // 박스 끝
+      clearInterval(this.intervalId);
+      process.exit();
+    }
+  }
+
+  produceScientist(count) {
+    const scientistCost = 100 * count;
+    if (this.foodSupply >= scientistCost) {
+      this.foodSupply -= scientistCost;
+      this.scientistCount += count;
+      console.log(`${count}명의 과학자가 생산되었습니다.`);
+    } else {
+      // console.log(`식량 부족으로 과학자를 생산할 수 없습니다.`);
+    }
+  }
+
+  produceFarmer(count) {
+    const farmerCost = 50 * count;
+    if (this.foodSupply >= farmerCost) {
+      this.foodSupply -= farmerCost;
+      this.farmerCount += count;
+      console.log(`${count}명의 농부가 생산되었습니다.`);
+    } else {
+      // console.log(`식량 부족으로 농부를 생산할 수 없습니다.`);
+    }
+  }
+
+  produceSoldier(count) {
+    const soldierCost = 150 * count;
+    if (this.foodSupply >= soldierCost) {
+      this.foodSupply -= soldierCost;
+      this.soldierCount += count;
+      console.log(`${count}명의 군인이 생산되었습니다.`);
+    } else {
+      // console.log(`식량 부족으로 군인을 생산할 수 없습니다.`);
+    }
+  }
+
+  producePriest(count) {
+    const priestCost = 80 * count;
+    if (this.foodSupply >= priestCost) {
+      this.foodSupply -= priestCost;
+      this.priestCount += count;
+      console.log(`${count}명의 종교인이 생산되었습니다.`);
+    } else {
+      // console.log(`식량 부족으로 종교인을 생산할 수 없습니다.`);
+    }
   }
 }
 
