@@ -158,7 +158,7 @@ class TestVillageAI extends VillageAI {
         this.village.produceSoldier(addedSoldiers);
         this.village.produceFarmer(addedFarmers);
     
-        console.log("식량이 풍족해서 적극적으로 AI 가 구입")
+        // console.log("마을에 식량이 풍족해 적극적으로 생산합니다.")
         // console.log(`${addedScientists}명의 과학자, ${addedPriests}명의 사제, ${addedSoldiers}명의 군인, ${addedFarmers}명의 농부가 추가되었습니다.`);
     } else if (this.village.foodSupply > 0) {
       // 식량 부족이 아니라면
