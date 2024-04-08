@@ -195,7 +195,7 @@ class Village {
       // }
     }
 
-    this.scienceLevel += this.scientistCount * 0.1;
+    this.scienceLevel += this.scientistCount * 0.01; // 과학자 1인 생산량
     this.civilizationLevel += Math.floor(this.population * 0.1);
 
     this.lastYearPopulation = this.population;
