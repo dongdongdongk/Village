@@ -6,6 +6,7 @@ const {
   TestVillageAI,
 } = require("./VillageAI");
 const { names } = require("./static");
+const fs = require("fs");
 
 // 생산 결과를 나타내는 클래스
 class ProductionResult {
@@ -15,11 +16,11 @@ class ProductionResult {
 }
 
 class Village {
-  constructor() {
+  constructor(villageManager) {
     this.foodProduction = 0; // 작년 생산 식량
     this.foodConsumption = 0; // 작년 소비 식량
     this.era = this.getCivilizationEra();
-    this.name = this.generateName();
+    this.name = null;
     this.territorySize = this.generateTerritorySize();
     this.happiness = 100;
     this.year = 0;
@@ -29,6 +30,8 @@ class Village {
     this.lastYearPopulation = this.population;
     this.birthRate = 0.03;
     this.deathRate = 0.01;
+
+    this.destroy = false; // 멸망 확인
 
     this.scientistCount = 0;
     this.farmerCount = 200;
@@ -46,16 +49,33 @@ class Village {
     this.expansionDesire = 0; // 영토확장
     this.expansionDesireCounter = 0;
 
+    if (this.name === null) {
+      this.name = "Unnamed Village"; // 마을 이름이 null인 경우 "Unnamed Village"로 설정
+    }
+
     // 랜덤하게 AI 선택
     const aiClasses = [StupidVillageAI, TestVillageAI];
     const randomAI = aiClasses[Math.floor(Math.random() * aiClasses.length)];
 
-    this.VillageAI = new randomAI(this); // 랜덤하게 선택된 VillageAI 인스턴스 생성 및 Village 인스턴스 전달
+    this.VillageAI = new randomAI(this, villageManager); // 랜덤하게 선택된 VillageAI 인스턴스 생성 및 Village 인스턴스 전달
 
-    setInterval(() => {
+    // setInterval 결과를 저장할 변수
+    this.intervalId = setInterval(() => {
       this.VillageAI.manageJobProduction(); // VillageAI의 메서드 호출
+      this.VillageAI.findTargetVillageForWar();
       this.updatePopulation();
     }, 500);
+  }
+
+  // 마을의 군인 수를 감소시키는 메서드
+  reduceSoldiers(count) {
+    // 전투로 인해 군인 수를 감소시킵니다.
+    this.soldierCount -= count;
+
+    // 만약 군인 수가 음수가 되면 0으로 설정합니다.
+    if (this.soldierCount < 0) {
+      this.soldierCount = 0;
+    }
   }
 
   // VillageManager로부터 받은 마을 번호를 설정하는 메서드
@@ -63,9 +83,9 @@ class Village {
     this.villageNumber = number;
   }
 
-  generateName() {
-    return names[Math.floor(Math.random() * names.length)];
-  }
+  // generateName() {
+  //   return names[Math.floor(Math.random() * names.length)];
+  // }
 
   generateTerritorySize() {
     return Math.floor(Math.random() * (100 - 50 + 1)) + 50;
@@ -128,40 +148,42 @@ class Village {
     const maxPopulation = this.territorySize * 1000;
 
     if (this.population > maxPopulation) {
-      const populationDecrease = Math.floor(this.population * 0.1); // 현재 인구의 30%를 감소시킴
-      let remainingPopulation = populationDecrease; // 분배되지 않은 나머지 인구
+      const populationDecrease = Math.floor(this.population * 0.05); // 현재 인구의 5%를 감소시킴
 
-      // 각 직업별 인구 수에서 랜덤하게 분배
-      while (remainingPopulation > 0) {
-        const randomJobIndex = Math.floor(Math.random() * 4); // 0부터 3까지의 랜덤 인덱스
-        let decreaseAmount = Math.ceil(remainingPopulation * Math.random()); // 분배될 양은 0부터 남은 인구 중 랜덤으로 결정
+      // 각 직업의 비율에 따라 5%를 나누어 감소시킴
+      const totalPopulation =
+        this.scientistCount +
+        this.farmerCount +
+        this.soldierCount +
+        this.priestCount;
+      const scientistRatio = this.scientistCount / totalPopulation;
+      const farmerRatio = this.farmerCount / totalPopulation;
+      const soldierRatio = this.soldierCount / totalPopulation;
+      const priestRatio = this.priestCount / totalPopulation;
 
-        // 선택된 직업의 인구 수가 감소량보다 크면 그만큼 감소시킴
-        if (randomJobIndex === 0 && this.scientistCount >= decreaseAmount) {
-          this.scientistCount -= decreaseAmount;
-          remainingPopulation -= decreaseAmount;
-        } else if (randomJobIndex === 1 && this.farmerCount >= decreaseAmount) {
-          this.farmerCount -= decreaseAmount;
-          remainingPopulation -= decreaseAmount;
-        } else if (
-          randomJobIndex === 2 &&
-          this.soldierCount >= decreaseAmount
-        ) {
-          this.soldierCount -= decreaseAmount;
-          remainingPopulation -= decreaseAmount;
-        } else if (randomJobIndex === 3 && this.priestCount >= decreaseAmount) {
-          this.priestCount -= decreaseAmount;
-          remainingPopulation -= decreaseAmount;
-        }
-      }
+      const scientistDecrease = Math.floor(populationDecrease * scientistRatio);
+      const farmerDecrease = Math.floor(populationDecrease * farmerRatio);
+      const soldierDecrease = Math.floor(populationDecrease * soldierRatio);
+      const priestDecrease = Math.floor(populationDecrease * priestRatio);
+
+      this.scientistCount -= scientistDecrease;
+      this.farmerCount -= farmerDecrease;
+      this.soldierCount -= soldierDecrease;
+      this.priestCount -= priestDecrease;
 
       this.expansionDesire++;
       this.expansionDesireCounter++;
-
-      if (this.expansionDesireCounter >= 100) {
-        console.log(
-          `마을의 영토 확장 욕구가 강해집니다! (현재 수치: ${this.expansionDesire})`
-        );
+      if (this.expansionDesireCounter >= 50) {
+        // console.log(
+        //   // `${this.name} 마을의 영토 확장 욕구가 강해집니다! (현재 수치: ${this.expansionDesire})`
+        //   `${this.name} 마을이 영토를 확장을 계획합니다!!`
+        // );
+        console.log("│─────────────────────────────────────│");
+        console.log("│                                     │");
+        console.log(`│(${this.name}) 마을이 영토 확장을 계획합니다!!`);
+        console.log("│                                     │");
+        console.log("│─────────────────────────────────────│");
+        this.printAsciiArtFromFile("./ASCII/expansion.txt");
         this.expansionDesireCounter = 0;
       }
     }
@@ -195,7 +217,7 @@ class Village {
       // }
     }
 
-    this.scienceLevel += this.scientistCount * 0.01; // 과학자 1인 생산량
+    this.scienceLevel += this.scientistCount * 0.001; // 과학자 1인 생산량
     this.civilizationLevel += Math.floor(this.population * 0.1);
 
     this.lastYearPopulation = this.population;
@@ -206,10 +228,21 @@ class Village {
   }
 
   extinguish() {
-    console.log("|+++++++++++++++++++++++++++++++++++++│");
+    // console.log("|+++++++++++++++++++++++++++++++++++++│");
+    // console.log("│─────────────────────────────────────│");
+    // console.log(`│ ${this.name} 마을이 식량 부족으로 멸망하였습니다.`);
+    // console.log("│─────────────────────────────────────│");
+    console.log(" ")
+    console.log(" ")
+    console.log(" ")
     console.log("│─────────────────────────────────────│");
-    console.log(`│ ${this.name} 마을이 식량 부족으로 멸망하였습니다.`);
+    console.log("│                                     │");
+    console.log(`│(${this.name}) 마을이 식량 부족으로 멸망하였습니다.`);
+    console.log("│                                     │");
     console.log("│─────────────────────────────────────│");
+    this.printAsciiArtFromFile("./ASCII/hungryVillage.txt");
+    // 반복 중지
+    clearInterval(this.intervalId);
   }
 
   printVillageInfo() {
@@ -231,7 +264,9 @@ class Village {
     console.log("│─────────────────────────────────────│");
     console.log(`│ 행복도: ${this.happiness}%`);
     console.log("│─────────────────────────────────────│");
-    console.log(`│ 문명 시대: ${this.getCivilizationEra()}(${this.scienceLevel})`);
+    console.log(
+      `│ 문명 시대: ${this.getCivilizationEra()}(${this.scienceLevel})`
+    );
     console.log("│─────────────────────────────────────│");
     console.log(`│ 정치 체제: ${this.politicalSystem}`);
     console.log("│─────────────────────────────────────│");
@@ -267,14 +302,18 @@ class Village {
     console.log("│─────────────────────────────────────│");
   }
 
-  // extinguish() {
-  //   console.log("|+++++++++++++++++++++++++++++++++++++│");
-  //   console.log("│─────────────────────────────────────│");
-  //   console.log(`│ ${this.name} 마을이 식량 부족으로 멸망하였습니다.`);
-  //   console.log("│─────────────────────────────────────│");
-  //   // 마을 멸망 이벤트를 VillageManager에 전달할 때 현재 객체를 매개변수로 전달합니다.
-  //   this.onExtinguish(this);
-  // }
+  destroyVillage() {
+
+    console.log("│─────────────────────────────────────│");
+    console.log("│                                     │");
+    console.log(`│ (${this.name}) 마을이 전쟁에서 패배해 멸망하였습니다.`);
+    console.log("│                                     │");
+    console.log("│─────────────────────────────────────│");
+    this.printAsciiArtFromFile("./ASCII/villageFalls.txt");
+    this.destroy = true;
+    // 반복 중지
+    clearInterval(this.intervalId);
+  }
 
   printPrimitiveAndAncientEraImage() {
     const era = this.era;
@@ -329,16 +368,8 @@ class Village {
 
     if (this.population <= 0) {
       this.extinguish();
+      this.destroy = true;
     }
-
-    // if (this.population <= 0) {
-    //   this.printExtinctionReport();
-    //         // VillageManager에게 해당 마을을 삭제하도록 요청
-    //   const villageIndex = VillageManager.villages.indexOf(this);
-    //   VillageManager.removeVillage(villageIndex);
-    //   this.village = null;
-
-    // }
   }
 
   produceScientist(count) {
@@ -383,6 +414,17 @@ class Village {
     } else {
       return new ProductionResult(false);
     }
+  }
+
+  // 파일을 읽어서 콘솔에 출력하는 함수 (클래스 메서드로 변경)
+  printAsciiArtFromFile(filePath) {
+    fs.readFile(filePath, "utf8", (err, data) => {
+      if (err) {
+        console.error("파일을 읽는 도중 오류가 발생했습니다:", err);
+        return;
+      }
+      console.log(data);
+    });
   }
 }
 
