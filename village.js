@@ -1,4 +1,5 @@
 // Village.js
+const { Shop } = require("./shop");
 
 const {
   StupidVillageAI,
@@ -17,6 +18,8 @@ class ProductionResult {
 
 class Village {
   constructor(villageManager) {
+    // 상점 인스턴스 초기화
+    this.shop = Shop.getInstance();
     this.foodProduction = 0; // 작년 생산 식량
     this.foodConsumption = 0; // 작년 소비 식량
     this.era = this.getCivilizationEra();
@@ -31,8 +34,14 @@ class Village {
     this.birthRate = 0.03;
     this.deathRate = 0.01;
 
+    this.boughtItems = []; // 구매한 아이템 목록을 저장할 배열 초기화
+
+    this.money = 0; // 마을 자금
+    this.combatPower = 0; // 마을 전투력
+
     this.destroy = false; // 멸망 확인
 
+    // 인구
     this.scientistCount = 0;
     this.farmerCount = 200;
     this.soldierCount = 0;
@@ -61,10 +70,48 @@ class Village {
 
     // setInterval 결과를 저장할 변수
     this.intervalId = setInterval(() => {
+      this.VillageAI.sellExcessFoodRandomly(); // 상점에 음식팔아 돈 벌기
       this.VillageAI.manageJobProduction(); // VillageAI의 메서드 호출
       this.VillageAI.findTargetVillageForWar();
+      this.VillageAI.buyBestItems();
       this.updatePopulation();
     }, 500);
+  }
+
+  // // Method to sell food to the shop and receive money
+  // sellFoodToShop(amount) {
+  //   const totalPrice = amount * this.shop.foodPrice; // Calculate total price
+  //   if (this.foodSupply < amount) {
+  //     console.log("마을의 식량이 부족하여 판매할 수 없습니다.");
+  //     return;
+  //   }
+  //   this.foodSupply -= amount; // Deduct sold food from village's food supply
+  //   this.money += totalPrice; // Add money to village's funds
+  //   console.log(`마을이 ${amount} 만큼의 식량을 판매하였습니다.`);
+  //   console.log(`마을이 ${totalPrice} 만큼의 금액을 획득하였습니다.`);
+  // }
+
+  // 아이템 구매 및 사용 메서드
+  buyAndUseItem(itemId) {
+    // 아이템 인덱스에 해당하는 아이템을 상점에서 구매
+    this.shop.buyItem(itemId, this);
+
+    // 구매한 아이템의 효과를 적용
+    const item = this.shop.items[itemId];
+    if (item) {
+      console.log("│─────────────────────────────────────│");
+      console.log("│                                     │");
+      console.log(`(${this.name}마을)이 아이템을 성공적으로 구매했습니다: ${item.name}`);
+      console.log("│                                     │");
+      console.log("│─────────────────────────────────────│");
+      // console.log(`구매한 아이템의 효과를 적용합니다.`);
+      item.applyEffect(this);
+
+      // 구매한 아이템을 구매 목록에 추가
+      this.boughtItems.push(item);
+    } else {
+      // console.log("아이템을 구매하지 못했습니다.");
+    }
   }
 
   // 마을의 군인 수를 감소시키는 메서드
@@ -178,6 +225,9 @@ class Village {
         //   // `${this.name} 마을의 영토 확장 욕구가 강해집니다! (현재 수치: ${this.expansionDesire})`
         //   `${this.name} 마을이 영토를 확장을 계획합니다!!`
         // );
+        console.log(" ");
+        console.log(" ");
+        console.log(" ");
         console.log("│─────────────────────────────────────│");
         console.log("│                                     │");
         console.log(`│(${this.name}) 마을이 영토 확장을 계획합니다!!`);
@@ -218,6 +268,7 @@ class Village {
     }
 
     this.scienceLevel += this.scientistCount * 0.001; // 과학자 1인 생산량
+    this.combatPower += this.soldierCount * 1; // 군인 1 군사력
     this.civilizationLevel += Math.floor(this.population * 0.1);
 
     this.lastYearPopulation = this.population;
@@ -232,9 +283,9 @@ class Village {
     // console.log("│─────────────────────────────────────│");
     // console.log(`│ ${this.name} 마을이 식량 부족으로 멸망하였습니다.`);
     // console.log("│─────────────────────────────────────│");
-    console.log(" ")
-    console.log(" ")
-    console.log(" ")
+    console.log(" ");
+    console.log(" ");
+    console.log(" ");
     console.log("│─────────────────────────────────────│");
     console.log("│                                     │");
     console.log(`│(${this.name}) 마을이 식량 부족으로 멸망하였습니다.`);
@@ -262,6 +313,8 @@ class Village {
     console.log("│─────────────────────────────────────│");
     console.log(`│ 식량 : ${this.foodSupply}`);
     console.log("│─────────────────────────────────────│");
+    console.log(`│ 재정 : ${this.money}`);
+    console.log("│─────────────────────────────────────│");
     console.log(`│ 행복도: ${this.happiness}%`);
     console.log("│─────────────────────────────────────│");
     console.log(
@@ -272,6 +325,38 @@ class Village {
     console.log("│─────────────────────────────────────│");
     console.log(`│ 현재 사용 중인 AI: ${this.VillageAI.constructor.name}`);
     console.log("│─────────────────────────────────────│");
+
+// 구매한 아이템 목록과 각 아이템의 효과 및 증가량 출력
+console.log("│ 구매한 아이템 목록:");
+this.boughtItems.forEach((item, index) => {
+  let effectDescription = "";
+
+  // 아이템의 효과와 증가량에 따라 표시 방식을 다르게 설정
+  switch (item.effect) {
+    case "increaseSoldier":
+      effectDescription = `군사력 증가: +${item.improvementPercentage}`;
+      break;
+    case "increaseTerritory":
+      effectDescription = `영토 증가: +${item.improvementPercentage} 헥타르`;
+      break;
+    case "increaseFood":
+      effectDescription = `식량 증가: +${item.improvementPercentage}`;
+      break;
+    case "increaseScience":
+      effectDescription = `과학 증가: +${item.improvementPercentage}`;
+      break;
+    // 추가적인 효과가 있을 경우 해당 효과를 추가합니다.
+    // case "additionalEffect":
+    //   effectDescription = `추가적인 효과: ${item.additionalEffectDescription}`;
+    //   break;
+    default:
+      effectDescription = `효과: ${item.effect}`;
+      break;
+  }
+
+  console.log(`│ ${index + 1}. ${item.name} - ${effectDescription}`);
+});
+console.log("│─────────────────────────────────────│");
   }
 
   printJobCounts() {
@@ -303,7 +388,9 @@ class Village {
   }
 
   destroyVillage() {
-
+    console.log(" ");
+    console.log(" ");
+    console.log(" ");
     console.log("│─────────────────────────────────────│");
     console.log("│                                     │");
     console.log(`│ (${this.name}) 마을이 전쟁에서 패배해 멸망하였습니다.`);

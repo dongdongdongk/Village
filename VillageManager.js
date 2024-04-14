@@ -1,6 +1,7 @@
 // VillageManager.js
 
 const Village = require("./village");
+const { Shop } = require("./shop");
 const { names } = require("./static");
 const readline = require("readline");
 const fs = require("fs");
@@ -11,6 +12,7 @@ class VillageManager {
     this.year = 0;
     this.gameInterval = null;
     this.currentVillageNumber = 0; // 현재 마을 번호를 설정.
+    this.shop = Shop.getInstance(); // 상점 인스턴스 가져오기
 
     // 사용자 입력을 받기 위한 readline 인터페이스 생성
     this.rl = readline.createInterface({
@@ -64,19 +66,29 @@ class VillageManager {
     initialVillage.name = this.generateUniqueName(); // 새로운 마을 이름 할당
     this.villages.push(initialVillage);
     // console.log("\n초기 마을이 생성되었습니다!");
-    console.log(" ")
-    console.log(" ")
-    console.log(" ")
+    console.log(" ");
+    console.log(" ");
+    console.log(" ");
     console.log("│─────────────────────────────────────│");
     console.log("│                                     │");
     console.log(`│초기 마을이 생성되었습니다!! (${initialVillage.name} 마을) `);
     console.log("│                                     │");
     console.log("│─────────────────────────────────────│");
-    
 
     // 게임 루프 시작
     this.gameInterval = setInterval(() => {
       this.year++;
+
+      // 100년마다 현재 년도 출력
+      if (this.year % 100 === 0) {
+        // console.log(`\n===== 현재 ${this.year}년 =====`);
+        console.log("  │─────────────────────────────────────│");
+        console.log("  │                                     │");
+        console.log(`  │    ===== 현재 년도 ${this.year}년 =====`);
+        console.log("  │                                     │");
+        console.log("  │─────────────────────────────────────│");
+        this.printAsciiArtFromFile("./ASCII/newYear.txt");
+      }
       // console.log(`\n\n===== ${this.year}년 =====`);
       this.checkDestroy();
       // 인구가 0인 마을 제거
@@ -89,12 +101,14 @@ class VillageManager {
         newVillage.setVillageNumber(villageNumber); // Village에 마을 번호를 설정합니다.
         newVillage.name = this.generateUniqueName(); // 새로운 마을 이름 할당
         // console.log(`\n새로운 마을이 건설 되었습니다! ( ${newVillage.name} )`);
-        console.log(" ")
-        console.log(" ")
-        console.log(" ")
+        console.log(" ");
+        console.log(" ");
+        console.log(" ");
         console.log("│─────────────────────────────────────│");
         console.log("│                                     │");
-        console.log(`│새로운 마을이 건설 되었습니다! (${newVillage.name} 마을) `);
+        console.log(
+          `│새로운 마을이 건설 되었습니다! (${newVillage.name} 마을) `
+        );
         console.log("│                                     │");
         console.log("│─────────────────────────────────────│");
         this.printAsciiArtFromFile("./ASCII/newVillage.txt");
@@ -173,12 +187,62 @@ class VillageManager {
   // 모든 마을의 간략한 정보를 출력하는 메서드
   showAllVillagesInfo() {
     console.log("===== 모든 마을 정보 =====");
-    this.printAsciiArtFromFile("ascii.txt");
+    console.log("===== 모든 마을 정보 =====");
+    console.log(`
+    1                                  __,----._                              2
+                                    _/         ~-_                           
+                                  _/              >        Arctic Ocean      
+        Atlantic Ocean          __-           ___-~    ___                    
+                              _-             \`---___,--' -'___                
+                          _-.~            _./\\___   |     ~   |/~~----.__     
+                       _-~ ${this.villages[20]?.name || ""}       / Utsjoki /          \`Murmansk  ~~--.
+                     _-           NORWAY |       (/                           
+                    _-        __/\\_      <       |         RUSSIA             
+                  _-Narvik___/ \\_  \\__/\_/    .${this.villages[21]?.name || ""}                          
+                 -_   .  /       ~~-.            \\_                           
+                  /    _/           \\ FINLAND      \\         ,-.___          _
+                 /   _/     .Kiruna  \\      .Sodankyla       ~--.__~-----~~~~ 
+               _/   /                 )            (               ~~---,     
+             _/    /                  \\    .Rovaniemi                   )     
+            /     /                   /            .Kuusamo             \\     
+          _/     /                    \\Tornio        \\                   \\    
+         /      |                 ,----+-.Kemi       (                    \\___
+       _/      /           Lulea.'        )           \\_                      
+      /       |                 |         \.Oulu       (_)                     
+     /       /                  |        /~      .Kajaani\\       RUSSIA       
+            \\                   >       / FINLAND        <                    
+    NORWAY  _)                  /      /                  ~-_                 
+    .     /~   SWEDEN      Umea.     .Kokkola   Kuopio      ~-_               
+    Trondheim                _/     /             .      .Joensuu             
+        <     .Ostersund    /     .'Vaasa                    /  _             
+        >         Sundsvall.      |           .Jyvaskyla    /  / ~-_          
+        |                 /       | FINLAND                /  / Lake Ladoga   
+        \\                 |       \\          Lappeenranta./  ~--_      >      
+        /                 |        |     .Tampere       _/_.Vyborg  ,--'      
+    Oslo|            Gavle.        .Rauma        __,--~~      \`--~~-.St       
+    *   >                  \\    _   ~-.Turku  _*~Helsinki      _/~~~Petersburg
+       /  SWEDEN            \\  <_>      ~---~~              <~~               
+    | |             Uppsala. >   Aland   Tallinn    _____,_.'                 
+    \\/            Stockholm*/                _-*~~~~   Narva>    RUSSIA       
+     \\        Norrkoping. /~              <><               |                 
+      \\                 _/   __          <__>\\   ESTONIA  .Tartu              
+       .Gothenburg     /    < /Gotland        ~-,____       |                 
+        \\             |/|   | >          .-^-_  |    ~------|                 
+         .Varberg     |||   |/          /     --*Riga       \\                 
+          \\           ||/Oland         |         _   LATVIA_/                 
+           >     ____/                 |--~~~~~~~ ~~-_  _-~|                  
+      _/~\\ |Malmo                      | LITHUANIA    ~~   >                  
+     (    *\\Lund>                      |                   <                  
+     ~~~~ <>                  __>     Kaunas.    *  /     RUSSIA       
+      ~~hagen     Bornholm          |              Vilnus /                  
+                                    \`,---------~-_      _/                   
+                                                  \\___-~                     
+    `);
     console.log(`===== 현재 년도 : ${this.year}년 =====`);
     this.villages.forEach((village, index) => {
       console.log("┌─────────────────────────────────────┐");
       console.log(
-        `│ ${village.name}마을, 번호:${village.villageNumber}, 인구 ${village.population}명, 영토 ${village.territorySize}, 군인 수 ${village.soldierCount} │`
+        `│ ${village.name}마을, 번호:${village.villageNumber}, 인구 ${village.population}명, 영토 ${village.territorySize}, 군인 수 ${village.soldierCount}, 마을 자금:${village.money} │`
       );
       console.log("└─────────────────────────────────────┘");
     });
@@ -210,8 +274,10 @@ class VillageManager {
       if (line === "마을 전체") {
         this.showAllVillagesInfo();
       } else if (line.startsWith("마을 상세")) {
-        const villageNumber = parseInt(line.split(" ")[2]); // "마을 상세" 다음의 숫자를 정수로 변환하여 가져옴
-        this.showVillageDetails(villageNumber); // showVillageDetails 메서드 호출
+        const villageNumber = parseInt(line.split(" ")[2]);
+        this.showVillageDetails(villageNumber);
+      } else if (line === "상점 전체") {
+        this.shop.listItems(); // 상점의 모든 물품 출력
       } else {
         console.log("알 수 없는 명령입니다.");
       }
